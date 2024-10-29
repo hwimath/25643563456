@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>휘매쓰 연산 챌린지!</title>
+    <style>
+        body {
+            font-family: 'Nanum Gothic', sans-serif;
+            text-align: center;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 0;
+        }
+        #game-container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
+        #energy-bar {
+            width: 80%;
+            height: 20px;
+            background-color: #ddd;
+            margin: 20px auto;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #energy {
+            width: 100%;
+            height: 100%;
+            background-color: #76c7c0;
+        }
+        .hidden {
+            display: none;
+        }
+        #question {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            padding: 0 20px;
+        }
+        .option {
+            display: block;
+            margin: 10px auto;
+            padding: 10px 20px;
+            width: 60%;
+            max-width: 400px;
+            font-size: 1.2em;
+            cursor: pointer;
+            background-color: #e0f7fa;
+            border: 2px solid #0097a7;
+            border-radius: 5px;
+        }
+        #score, #lives, #total-time {
+            font-size: 1em;
+            margin: 10px;
+        }
+        #popup {
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -30%);
+            background-color: #fff9c4;
+            padding: 20px;
+            border: 2px solid #ffeb3b;
+            border-radius: 10px;
+            display: none;
+            z-index: 1000;
+        }
+        #difficulty-selection button {
+            font-size: 1.2em;
+            margin: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>휘매쓰 연산 챌린지!</h1>
+        <div id="difficulty-selection">
+            <p>난이도를 선택하세요:</p>
+            <button onclick="startGame('최상')">최상</button>
+            <button onclick="startGame('상')">상</button>
+            <button onclick="startGame('중')">중</button>
+            <button onclick="startGame('하')">하</button>
+        </div>
+        <div id="game" class="hidden">
+            <div id="energy-bar">
+                <div id="energy"></div>
+            </div>
+            <div id="question"></div>
+            <div id="options">
+                <button class="option" onclick="checkAnswer(0)" id="option0"></button>
+                <button class="option" onclick="checkAnswer(1)" id="option1"></button>
+                <button class="option" onclick="checkAnswer(2)" id="option2"></button>
+                <button class="option" onclick="checkAnswer(3)" id="option3"></button>
+            </div>
+            <div id="score">점수: 0</div>
+            <div id="lives">남은 기회: 3</div>
+            <div id="total-time">총 게임 시간: 0초</div>
+        </div>
+    </div>
+    <div id="popup"></div>
+    <script>
+        // 문제 리스트 생성
+        const problems = [
+            { question: '정호는 우표 37장, 서희는 49장 모았습니다. 서희의 우표는 정호보다 몇 장 더 많습니까?', answer: 12 },
+            { question: '58개의 촛불이 있었습니다. 그 중 24개가 꺼졌습니다. 몇 개의 촛불이 남았습니까?', answer: 34 },
+            { question: '파란색 공 23개, 노란색 공 17개가 있습니다. 공은 모두 몇 개입니까?', answer: 40 },
+            { question: '민수는 책을 28권 가지고 있고, 정희는 민수보다 15권 더 가지고 있습니다. 두 사람이 가진 책은 모두 몇 권입니까?', answer: 71 },
+            { question: '사과 85개 중에서 57개를 먹었습니다. 남은 사과는 몇 개입니까?', answer: 28 },
+            { question: '연필 42자루와 지우개 19개가 있습니다. 물건은 모두 몇 개입니까?', answer: 61 },
+            { question: '토끼 64마리가 있었는데, 29마리가 숲으로 갔습니다. 남은 토끼는 몇 마리입니까?', answer: 35 },
+            { question: '영희는 사탕 72개를 가지고 있고, 철수는 38개를 가지고 있습니다. 두 사람이 가진 사탕은 모두 몇 개입니까?', answer: 110 },
+            { question: '꽃병에 꽃이 53송이 있습니다. 47송이를 더 꽂았습니다. 꽃은 모두 몇 송이입니까?', answer: 100 },
+            { question: '나무에 새가 97마리 앉아있었는데, 68마리가 날아갔습니다. 나무에 남은 새는 몇 마리입니까?', answer: 29 },
+            { question: '축구공 15개와 농구공 27개가 있습니다. 공은 모두 몇 개입니까?', answer: 42 },
+            { question: '지우는 딸기 46개를 먹었고, 53개가 남았습니다. 처음에 딸기는 몇 개였습니까?', answer: 99 },
+            { question: '버스에 사람 84명이 타고 있었는데, 다음 정거장에서 56명이 내렸습니다. 버스에 남은 사람은 몇 명입니까?', answer: 28 },
+            { question: '공책이 75권 있었는데, 친구에게 23권을 주었습니다. 남은 공책은 몇 권입니까?', answer: 52 },
+            { question: '모든 학생이 98명이고, 그 중 59명이 여자입니다. 남학생은 몇 명입니까?', answer: 39 },
+            { question: '나비 26마리가 꽃에 앉아있고, 33마리가 더 날아왔습니다. 꽃에 앉은 나비는 모두 몇 마리입니까?', answer: 59 },
+            { question: '엄마는 쿠키를 54개 구웠고, 그 중 13개를 아빠가 먹었습니다. 남은 쿠키는 몇 개입니까?', answer: 41 },
+            { question: '책상 위에 연필 31자루와 펜 68자루가 있습니다. 필기구는 모두 몇 자루입니까?', answer: 99 },
+            { question: '철수는 그림을 45장 그렸고, 영희는 54장을 그렸습니다. 두 사람이 그린 그림은 모두 몇 장입니까?', answer: 99 },
+            { question: '과자 봉지가 78개 있었는데, 43개를 먹었습니다. 남은 과자 봉지는 몇 개입니까?', answer: 35 },
+            { question: '버섯 25개를 찾았고, 또 74개를 더 찾았습니다. 버섯은 모두 몇 개입니까?', answer: 99 },
+            { question: '장난감 자동차가 67개 있었는데, 18개를 잃어버렸습니다. 남은 장난감 자동차는 몇 개입니까?', answer: 49 },
+            { question: '빨간색 공 34개와 파란색 공 45개가 있습니다. 공은 모두 몇 개입니까?', answer: 79 },
+            { question: '친구들이 86명 놀고 있었는데, 57명이 집에 갔습니다. 남은 친구들은 몇 명입니까?', answer: 29 },
+            { question: '수지는 물고기 13마리를 키우고 있고, 민수는 21마리를 키우고 있습니다. 두 사람이 키우는 물고기는 모두 몇 마리입니까?', answer: 34 },
+            { question: '달걀 96개 중에서 89개를 사용했습니다. 남은 달걀은 몇 개입니까?', answer: 7 },
+            { question: '꽃다발에 꽃이 58송이 있었는데, 26송이를 더 추가했습니다. 꽃다발의 꽃은 모두 몇 송이입니까?', answer: 84 },
+            { question: '형은 46살이고, 동생은 형보다 19살 어립니다. 동생은 몇 살입니까?', answer: 27 },
+            { question: '서점에서 책 69권을 샀고, 그 중 32권을 친구에게 주었습니다. 남은 책은 몇 권입니까?', answer: 37 },
+            { question: '할머니께서 사과를 79개 주셨는데, 66개를 먹었습니다. 남은 사과는 몇 개입니까?', answer: 13 },
+            { question: '하늘에 구름이 27개 있었는데, 53개가 더 생겼습니다. 구름은 모두 몇 개입니까?', answer: 80 },
+            { question: '연습장에 그림을 14장 그렸고, 다음 날 85장을 더 그렸습니다. 그림은 모두 몇 장입니까?', answer: 99 },
+            { question: '강아지 35마리 중에서 12마리가 잠들었습니다. 깨어있는 강아지는 몇 마리입니까?', answer: 23 },
+            { question: '학교에 가는 길에 나무가 44그루 있고, 꽃이 55송이 피어있습니다. 나무와 꽃은 모두 몇 개입니까?', answer: 99 },
+            { question: '아이스크림을 57개 사서 43개를 먹었습니다. 남은 아이스크림은 몇 개입니까?', answer: 14 },
+            { question: '친구들과 66명이서 놀고 있었는데, 25명이 더 왔습니다. 친구들은 모두 몇 명입니까?', answer: 91 },
+            { question: '색연필이 73자루 있었는데, 62자루를 사용했습니다. 남은 색연필은 몇 자루입니까?', answer: 11 },
+            { question: '바구니에 과일이 36개 있고, 엄마가 63개를 더 넣었습니다. 과일은 모두 몇 개입니까?', answer: 99 },
+            { question: '책을 24권 읽었고, 75권이 더 남았습니다. 책은 모두 몇 권이었습니까?', answer: 99 },
+            { question: '수박 89조각 중에서 58조각을 먹었습니다. 남은 수박 조각은 몇 개입니까?', answer: 31 },
+            { question: '바닷가에서 조개 47개를 주웠고, 형은 52개를 주웠습니다. 두 사람이 주운 조개는 모두 몇 개입니까?', answer: 99 },
+            { question: '공원에 나무가 65그루 있고, 벤치가 34개 있습니다. 나무와 벤치는 모두 몇 개입니까?', answer: 99 },
+            { question: '지민이는 스티커를 53개 가지고 있고, 지호는 46개 가지고 있습니다. 두 사람이 가진 스티커는 모두 몇 개입니까?', answer: 99 },
+            { question: '토마토 77개 중에서 68개를 샐러드에 사용했습니다. 남은 토마토는 몇 개입니까?', answer: 9 },
+            { question: '동생에게 사탕 23개를 주고, 나는 76개를 먹었습니다. 사탕은 모두 몇 개였습니까?', answer: 99 },
+            { question: '물병이 98개 있었는데, 15개가 깨졌습니다. 남은 물병은 몇 개입니까?', answer: 83 },
+            { question: '친구들이 57명 있었는데, 44명이 집에 갔습니다. 남은 친구는 몇 명입니까?', answer: 13 },
+            { question: '마카롱을 33개 먹었고, 66개가 남았습니다. 마카롱은 모두 몇 개였습니까?', answer: 99 },
+            { question: '우산이 87개 있었는데, 54개를 잃어버렸습니다. 남은 우산은 몇 개입니까?', answer: 33 },
+            { question: '연을 18개 날렸고, 친구는 81개를 날렸습니다. 두 사람이 날린 연은 모두 몇 개입니까?', answer: 99 },
+            { question: '과자를 66개 먹었고, 33개가 남았습니다. 과자는 모두 몇 개였습니까?', answer: 99 },
+            { question: '모임에 사람 76명이 왔고, 그 중 27명이 일찍 갔습니다. 남은 사람은 몇 명입니까?', answer: 49 },
+            { question: '민수는 스티커를 45개 가지고 있고, 정희는 민수보다 18개 더 가지고 있습니다. 두 사람이 가진 스티커는 모두 몇 개입니까?', answer: 108 }
+        ];
+
+        let gameTime = 0;
+        let energyInterval;
+        let totalTimeInterval;
+        let energyWidth;
+        let energyDecreaseRate;
+        let currentProblem;
+        let score = 0;
+        let lives = 3;
+        let totalTime = 0;
+        let difficulty;
+        let pointsPerQuestion;
+        let timeLimit;
+        let problemSequence = [];
+        let initialTimeLimit;
+
+        function startGame(selectedDifficulty) {
+            difficulty = selectedDifficulty;
+            document.getElementById('difficulty-selection').classList.add('hidden');
+            document.getElementById('game').classList.remove('hidden');
+            if (difficulty === '최상') {
+                timeLimit = 20;
+                pointsPerQuestion = 20;
+            } else if (difficulty === '상') {
+                timeLimit = 30;
+                pointsPerQuestion = 15;
+            } else if (difficulty === '중') {
+                timeLimit = 40;
+                pointsPerQuestion = 13;
+            } else {
+                timeLimit = Infinity;
+                pointsPerQuestion = 10;
+            }
+            initialTimeLimit = timeLimit;
+            energyDecreaseRate = 100 / timeLimit;
+            totalTimeInterval = setInterval(() => {
+                totalTime++;
+                document.getElementById('total-time').innerText = `총 게임 시간: ${totalTime}초`;
+            }, 1000);
+            problemSequence = [...problems];
+            shuffleArray(problemSequence);
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            if (lives <= 0) {
+                endGame();
+                return;
+            }
+            if (energyInterval) clearInterval(energyInterval);
+            energyWidth = 100;
+            document.getElementById('energy').style.width = '100%';
+            if (difficulty !== '하') {
+                timeLimit = initialTimeLimit * Math.pow(0.99, score / pointsPerQuestion);
+                energyDecreaseRate = 100 / timeLimit;
+                energyInterval = setInterval(() => {
+                    energyWidth -= energyDecreaseRate * 0.1;
+                    document.getElementById('energy').style.width = energyWidth + '%';
+                    if (energyWidth <= 0) {
+                        clearInterval(energyInterval);
+                        lives--;
+                        document.getElementById('lives').innerText = `남은 기회: ${lives}`;
+                        showAnswer(false);
+                        if (lives > 0) {
+                            nextQuestion();
+                        } else {
+                            endGame();
+                        }
+                    }
+                }, 100);
+            }
+            if (problemSequence.length === 0) {
+                problemSequence = [...problems];
+                shuffleArray(problemSequence);
+            }
+            currentProblem = problemSequence.shift();
+            document.getElementById('question').innerText = currentProblem.question;
+            generateOptions(currentProblem.answer);
+        }
+
+        function generateOptions(correctAnswer) {
+            let options = new Set();
+            options.add(correctAnswer);
+            while (options.size < 4) {
+                let wrongAnswer = correctAnswer + (Math.floor(Math.random() * 20) - 10);
+                if (wrongAnswer !== correctAnswer && wrongAnswer > 0 && wrongAnswer < 200) {
+                    options.add(wrongAnswer);
+                }
+            }
+            options = Array.from(options);
+            shuffleArray(options);
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`option${i}`).innerText = options[i];
+                if (options[i] === correctAnswer) {
+                    window.correctOption = i;
+                }
+            }
+        }
+
+        function checkAnswer(selectedOption) {
+            if (selectedOption === window.correctOption) {
+                score += pointsPerQuestion;
+                document.getElementById('score').innerText = `점수: ${score}`;
+                showPopup();
+                nextQuestion();
+            } else {
+                lives--;
+                document.getElementById('lives').innerText = `남은 기회: ${lives}`;
+                showAnswer(true);
+                if (lives > 0) {
+                    nextQuestion();
+                } else {
+                    endGame();
+                }
+            }
+        }
+
+        function showAnswer(isWrong) {
+            const correctAnswer = currentProblem.answer;
+            if (isWrong) {
+                alert(`틀렸습니다! 정답은 ${correctAnswer}입니다.`);
+            } else {
+                alert(`시간 초과! 정답은 ${correctAnswer}입니다.`);
+            }
+        }
+
+        function endGame() {
+            clearInterval(totalTimeInterval);
+            alert(`게임 종료! 최종 점수: ${score}`);
+            location.reload();
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function showPopup() {
+            let randomNumber = Math.random();
+            let popupText = '';
+            if (randomNumber < 0.0001) {
+                popupText = '축하합니다! 5000원 상품권에 당첨되셨습니다!';
+            } else if (randomNumber < 0.001) {
+                popupText = '축하합니다! 3000원 상품권에 당첨되셨습니다!';
+            } else if (randomNumber < 0.002) {
+                popupText = '축하합니다! 1회 면제권을 획득하셨습니다!';
+                lives++;
+                document.getElementById('lives').innerText = `남은 기회: ${lives}`;
+            }
+            if (popupText) {
+                const popup = document.getElementById('popup');
+                popup.innerText = popupText;
+                popup.style.display = 'block';
+                setTimeout(() => {
+                    popup.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>
